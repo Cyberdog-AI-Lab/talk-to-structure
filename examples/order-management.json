@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "title": "受注管理システム",
+    "description": "商品の受注から入金・出荷までの一連の業務フローを管理するシステム"
+  },
+  "entities": [
+    {
+      "id": "customer", "label": "顧客", "type": "master",
+      "description": "商品を購入する企業または個人。すべての受注はこの顧客情報に紐づく。",
+      "attributes": [
+        { "name": "顧客ID",       "pk": true,       "description": "顧客を一意に識別するシステム内部のID" },
+        { "name": "会社名",       "required": true, "description": "顧客の正式な法人名または個人名" },
+        { "name": "担当者名",                       "description": "顧客企業の中で連絡を取る担当者の名前" },
+        { "name": "メールアドレス",                 "description": "受注確認や連絡のために使用する連絡先" }
+      ]
+    },
+    {
+      "id": "product", "label": "商品", "type": "master",
+      "description": "販売対象となる商品の基本情報。価格はここで一元管理する。",
+      "attributes": [
+        { "name": "商品ID", "pk": true,       "description": "商品を一意に識別するID" },
+        { "name": "商品名", "required": true, "description": "顧客に表示される商品の名前" },
+        { "name": "単価",   "required": true, "description": "1個あたりの販売価格" }
+      ]
+    },
+    {
+      "id": "order", "label": "受注", "type": "transaction",
+      "description": "顧客からの注文1件を表す。受注明細・入金・出荷はすべてこのレコードに紐づく。",
+      "attributes": [
+        { "name": "受注ID",   "pk": true,       "description": "受注を一意に識別するID" },
+        { "name": "顧客ID",   "fk": { "entity": "customer", "attribute": "顧客ID" }, "required": true, "description": "この受注を行った顧客への参照" },
+        { "name": "受注日時", "required": true, "description": "注文が確定した日時" },
+        { "name": "合計金額", "required": true, "description": "この受注に含まれる全商品の合計金額" },
+        { "name": "ステータス", "required": true, "description": "受注の現在の進捗状態" }
+      ]
+    },
+    {
+      "id": "order_item", "label": "受注明細", "type": "junction",
+      "description": "1つの受注に含まれる商品1種類分の明細。受注と商品を結びつける。",
+      "attributes": [
+        { "name": "明細ID",        "pk": true,       "description": "明細を一意に識別するID" },
+        { "name": "受注ID",        "fk": { "entity": "order",   "attribute": "受注ID" }, "required": true, "description": "この明細が属する受注への参照" },
+        { "name": "商品ID",        "fk": { "entity": "product", "attribute": "商品ID" }, "required": true, "description": "この明細の対象商品への参照" },
+        { "name": "数量",          "required": true, "description": "購入した商品の個数" },
+        { "name": "単価（受注時）", "required": true, "description": "受注した時点での単価。後から商品価格が変わっても影響しない" }
+      ]
+    },
+    {
+      "id": "payment", "label": "入金", "type": "transaction",
+      "description": "受注に対する顧客からの支払い記録。1つの受注に1件の入金が対応する。",
+      "attributes": [
+        { "name": "入金ID",   "pk": true,       "description": "入金を一意に識別するID" },
+        { "name": "受注ID",   "fk": { "entity": "order", "attribute": "受注ID" }, "required": true, "description": "この入金が対応する受注への参照" },
+        { "name": "入金日",   "required": true, "description": "実際に入金が確認された日付" },
+        { "name": "金額",     "required": true, "description": "入金された金額" },
+        { "name": "入金方法", "required": true, "description": "どの手段で支払われたか" }
+      ]
+    },
+    {
+      "id": "shipment", "label": "出荷", "type": "transaction",
+      "description": "受注商品の発送記録。",
+      "attributes": [
+        { "name": "出荷ID", "pk": true,       "description": "出荷を一意に識別するID" },
+        { "name": "受注ID", "fk": { "entity": "order", "attribute": "受注ID" }, "required": true, "description": "この出荷が対応する受注への参照" },
+        { "name": "出荷日", "required": true, "description": "商品を発送した日付" },
+        { "name": "追跡番号",                 "description": "配送業者が発行する荷物追跡のための番号" }
+      ]
+    }
+  ],
+  "relations": [
+    { "id": "r1", "from": "customer",  "to": "order",      "label": "発注する",   "cardinality": "1:N", "description": "1人の顧客が複数の注文を行うことができる。" },
+    { "id": "r2", "from": "order",     "to": "order_item", "label": "含む",       "cardinality": "1:N", "description": "1つの受注には複数の商品明細が含まれる。" },
+    { "id": "r3", "from": "product",   "to": "order_item", "label": "含まれる",   "cardinality": "1:N", "description": "1つの商品は複数の受注明細に登場しうる。" },
+    { "id": "r4", "from": "order",     "to": "payment",    "label": "に対応する", "cardinality": "1:1", "description": "1つの受注には1件の入金が対応する。" },
+    { "id": "r5", "from": "order",     "to": "shipment",   "label": "につながる", "cardinality": "1:1", "description": "1つの受注に対して1件の出荷が発生する。" }
+  ],
+  "constraints": [
+    { "entity": "order",   "attribute": "ステータス", "type": "enum",  "values": ["受付中", "確定", "出荷済", "キャンセル"] },
+    { "entity": "payment", "attribute": "入金方法",   "type": "enum",  "values": ["銀行振込", "クレジットカード", "現金"] },
+    { "entity": "order_item", "attribute": "数量",    "type": "check", "rule": "1個以上" }
+  ]
+}

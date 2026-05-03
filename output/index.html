@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>情報のつながり図</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f1117; color: #e2e8f0; }
+
+    header {
+      padding: 16px 24px; background: #1a1d2e; border-bottom: 1px solid #2d3148;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 15px; font-weight: 600; color: #a5b4fc; }
+    header .sub { font-size: 12px; color: #64748b; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: #312e81; color: #a5b4fc; margin-left: auto; }
+
+    #cy { width: 100%; height: calc(100vh - 56px); }
+
+    .tooltip {
+      position: fixed; background: #1e2235; border: 1px solid #2d3148;
+      border-radius: 10px; padding: 14px 16px; font-size: 13px;
+      pointer-events: none; display: none; z-index: 200; max-width: 300px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+      top: 68px; right: 20px;
+    }
+    #node-tooltip .tt-name { font-size: 16px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    #node-tooltip .tt-type { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 9999px; display: inline-block; margin-bottom: 6px; }
+    #node-tooltip .tt-desc { font-size: 12px; color: #64748b; line-height: 1.6; margin-bottom: 10px; font-style: italic; }
+    .tt-section { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 5px; }
+    .tt-attr { display: grid; grid-template-columns: 18px 1fr auto; align-items: start; gap: 0 6px; padding: 2px 0; }
+    .tt-attr .icon { font-size: 12px; line-height: 1.6; }
+    .tt-attr .attr-body { min-width: 0; }
+    .tt-attr .attr-name { font-size: 12px; color: #cbd5e1; line-height: 1.5; }
+    .tt-attr .attr-desc { font-size: 11px; color: #475569; line-height: 1.4; margin-top: 1px; }
+    .tt-attr .attr-ref  { font-size: 11px; color: #38bdf8; line-height: 1.4; margin-top: 1px; }
+    .badge-sm { font-size: 10px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; align-self: start; margin-top: 3px; }
+    .badge-pk  { background: #312e81; color: #a5b4fc; }
+    .badge-fk  { background: #0c2a3a; color: #38bdf8; }
+    .badge-req { background: #1c1917; color: #78716c; }
+    .tt-rule { font-size: 12px; color: #94a3b8; line-height: 1.7; margin-bottom: 2px; }
+    .tt-rule .rule-key { color: #f59e0b; font-weight: 600; }
+    #edge-tooltip .et-label { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    #edge-tooltip .et-card { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 9999px; background: #1e293b; color: #94a3b8; margin-bottom: 8px; }
+    #edge-tooltip .et-desc { font-size: 12px; color: #64748b; line-height: 1.6; font-style: italic; }
+    hr.tt-hr { border: none; border-top: 1px solid #2d3148; margin: 8px 0; }
+
+    #filter-panel { position: fixed; top: 68px; left: 12px; background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; z-index: 150; min-width: 190px; overflow: hidden; }
+    .fp-header { display: flex; align-items: center; padding: 10px 12px; gap: 6px; border-bottom: 1px solid #2d3148; }
+    .fp-title { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; flex: 1; }
+    .fp-btn { font-size: 10px; color: #64748b; background: none; border: none; cursor: pointer; padding: 1px 5px; border-radius: 4px; }
+    .fp-btn:hover { color: #a5b4fc; background: #2d3148; }
+    #fp-list { padding: 8px 12px 12px; }
+    .fp-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; user-select: none; }
+    .fp-item:hover .fp-label { color: #e2e8f0; }
+    .fp-check { accent-color: #6366f1; width: 14px; height: 14px; cursor: pointer; }
+    .fp-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; transition: color 0.1s; }
+    .fp-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+    #legend { position: fixed; bottom: 20px; left: 20px; background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; padding: 12px 16px; font-size: 12px; z-index: 100; }
+    #legend .leg-title { color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .leg-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: #94a3b8; }
+    .leg-item:last-child { margin-bottom: 0; }
+    .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+    #attr-legend { position: fixed; bottom: 20px; right: 20px; background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; padding: 12px 16px; font-size: 12px; z-index: 100; }
+    #attr-legend .leg-title { color: #475569; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .al-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: #94a3b8; }
+    .al-item:last-child { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1 id="page-title">情報のつながり図</h1>
+  <span class="sub" id="page-desc"></span>
+  <span class="badge">talk-to-structure</span>
+</header>
+
+<div id="cy"></div>
+
+<div id="node-tooltip" class="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <span class="tt-type" id="tt-type"></span>
+  <div class="tt-desc"  id="tt-desc"></div>
+  <div id="tt-attrs"></div>
+  <div id="tt-constraints"></div>
+</div>
+
+<div id="edge-tooltip" class="tooltip">
+  <div class="et-label" id="et-label"></div>
+  <span class="et-card"  id="et-card"></span>
+  <div class="et-desc"  id="et-desc"></div>
+</div>
+
+<div id="filter-panel">
+  <div class="fp-header">
+    <span class="fp-title">表示するもの</span>
+    <button class="fp-btn" id="fp-all">すべて</button>
+    <button class="fp-btn" id="fp-none">なし</button>
+    <button class="fp-btn" id="fp-toggle">▲</button>
+  </div>
+  <div id="fp-list"></div>
+</div>
+
+<div id="legend">
+  <div class="leg-title">情報の種類</div>
+  <div class="leg-item"><div class="dot" style="background:#6366f1"></div> 基本情報</div>
+  <div class="leg-item"><div class="dot" style="background:#06b6d4"></div> 取引・履歴</div>
+  <div class="leg-item"><div class="dot" style="background:#f59e0b"></div> 明細・紐付け</div>
+  <div class="leg-item"><div class="dot" style="background:#10b981"></div> 外部連携</div>
+</div>
+
+<div id="attr-legend">
+  <div class="leg-title">項目の印</div>
+  <div class="al-item"><span style="font-size:13px">🔑</span> この情報を特定するID</div>
+  <div class="al-item"><span style="font-size:13px">🔗</span> 他の情報への参照</div>
+  <div class="al-item"><span style="color:#f87171;font-weight:700;font-size:13px">✱</span> 入力が必須の項目</div>
+</div>
+
+<script>
+const graphData = {"meta": {"title": "ライブハウス予約管理システム", "description": "イベント企画・バンドブッキング・チケット販売・出演バンドとの精算・スタッフシフトを一元管理するシステム"}, "entities": [{"id": "event", "label": "イベント", "type": "transaction", "description": "ライブハウスが企画・開催する1公演。日程・会場・タイトルを持ち、出演バンド・チケット販売・スタッフシフトはすべてこのイベントに紐づく。", "attributes": [{"name": "イベントID", "pk": true, "description": "イベントを一意に識別するID"}, {"name": "タイトル", "required": true, "description": "公演のタイトル・イベント名"}, {"name": "開催日時", "required": true, "description": "公演が開催される日付と開演時刻"}, {"name": "会場名", "required": true, "description": "公演を行うライブハウスの名称"}]}, {"id": "band", "label": "バンド", "type": "master", "description": "出演依頼を受けるアーティスト・バンド。バンド名と連絡先を管理し、出演・チケット取り置きはこのバンドに紐づく。", "attributes": [{"name": "バンドID", "pk": true, "description": "バンドを一意に識別するID"}, {"name": "バンド名", "required": true, "description": "アーティスト・バンドの名称"}, {"name": "連絡先", "required": true, "description": "ブッキング連絡に使用するメールアドレスや電話番号"}]}, {"id": "performance", "label": "出演", "type": "junction", "description": "イベントとバンドを結ぶ出演記録。出演形態（招待またはノルマ）・ノルマ金額・報酬額を管理する。", "attributes": [{"name": "出演ID", "pk": true, "description": "出演記録を一意に識別するID"}, {"name": "イベントID", "fk": {"entity": "event", "attribute": "イベントID"}, "required": true, "description": "どのイベントに出演するかへの参照"}, {"name": "バンドID", "fk": {"entity": "band", "attribute": "バンドID"}, "required": true, "description": "出演するバンドへの参照"}, {"name": "出演形態", "required": true, "description": "招待（報酬支払い）またはノルマ（チケット販売義務あり）の区分"}, {"name": "ノルマ金額", "description": "ノルマ出演の場合に課される最低保証販売金額。招待の場合は空欄。"}, {"name": "報酬額", "description": "招待出演の場合に支払う報酬。ノルマの場合は空欄。"}]}, {"id": "ticket_type", "label": "チケット種別", "type": "master", "description": "チケットの販売チャネルを定義するマスター。直販・eチケット・バンド取り置きの3種類を管理する。", "attributes": [{"name": "チケット種別ID", "pk": true, "description": "チケット種別を一意に識別するID"}, {"name": "種別名", "required": true, "description": "販売チャネルの名称（直販・eチケット・取り置き）"}, {"name": "単価", "required": true, "description": "このチャネルでのチケット1枚あたりの販売価格"}]}, {"id": "ticket_sale", "label": "チケット販売", "type": "junction", "description": "イベント・チケット種別・バンドを結ぶ販売記録。チャネル別・バンド別の販売枚数と売上金額を管理する。バンド取り置き以外はバンドIDが空欄。", "attributes": [{"name": "販売ID", "pk": true, "description": "チケット販売記録を一意に識別するID"}, {"name": "イベントID", "fk": {"entity": "event", "attribute": "イベントID"}, "required": true, "description": "どのイベントのチケットかへの参照"}, {"name": "チケット種別ID", "fk": {"entity": "ticket_type", "attribute": "チケット種別ID"}, "required": true, "description": "どの販売チャネルかへの参照"}, {"name": "バンドID", "fk": {"entity": "band", "attribute": "バンドID"}, "description": "取り置きチケットを管理するバンドへの参照。取り置き以外は空欄。"}, {"name": "販売枚数", "required": true, "description": "このチャネル・バンドで販売されたチケットの枚数"}, {"name": "売上金額", "required": true, "description": "販売枚数 × 単価の合計金額"}]}, {"id": "staff", "label": "スタッフ", "type": "master", "description": "当日イベントに従事するスタッフ。名前と役割を持ち、シフトを通じて各イベントに紐づく。", "attributes": [{"name": "スタッフID", "pk": true, "description": "スタッフを一意に識別するID"}, {"name": "名前", "required": true, "description": "スタッフの氏名"}, {"name": "役割", "required": true, "description": "ステージ・受付・物販など担当する職種"}]}, {"id": "shift", "label": "シフト", "type": "junction", "description": "イベントとスタッフを結ぶシフト記録。担当時間を管理する。", "attributes": [{"name": "シフトID", "pk": true, "description": "シフト記録を一意に識別するID"}, {"name": "イベントID", "fk": {"entity": "event", "attribute": "イベントID"}, "required": true, "description": "どのイベントのシフトかへの参照"}, {"name": "スタッフID", "fk": {"entity": "staff", "attribute": "スタッフID"}, "required": true, "description": "担当するスタッフへの参照"}, {"name": "担当時間", "required": true, "description": "スタッフが勤務する開始〜終了の時間帯"}]}], "relations": [{"id": "r1", "from": "event", "to": "performance", "label": "に出演がある", "cardinality": "1:N", "description": "1つのイベントに複数のバンドが出演する。各出演はイベントに紐づく。"}, {"id": "r2", "from": "band", "to": "performance", "label": "出演する", "cardinality": "1:N", "description": "1つのバンドが複数のイベントに出演しうる。各出演はバンドに紐づく。"}, {"id": "r3", "from": "event", "to": "ticket_sale", "label": "チケットを売る", "cardinality": "1:N", "description": "1つのイベントで複数の販売チャネル・バンドに分けてチケットを販売する。"}, {"id": "r4", "from": "ticket_type", "to": "ticket_sale", "label": "チャネルとして使われる", "cardinality": "1:N", "description": "同一の販売チャネル（直販・eチケット・取り置き）が複数のイベントで繰り返し使われる。"}, {"id": "r5", "from": "band", "to": "ticket_sale", "label": "取り置きを持つ", "cardinality": "1:N", "description": "バンドの取り置きチケット分はバンドに紐づく。直販・eチケットにはバンドの紐づけがない。"}, {"id": "r6", "from": "event", "to": "shift", "label": "シフトを組む", "cardinality": "1:N", "description": "1つのイベントに複数のスタッフがシフトとして割り当てられる。"}, {"id": "r7", "from": "staff", "to": "shift", "label": "担当する", "cardinality": "1:N", "description": "1人のスタッフが複数のイベントのシフトに入りうる。"}], "constraints": [{"entity": "performance", "attribute": "出演形態", "type": "enum", "values": ["招待", "ノルマ"]}, {"entity": "ticket_type", "attribute": "種別名", "type": "enum", "values": ["直販", "eチケット", "取り置き"]}, {"entity": "ticket_sale", "attribute": "販売枚数", "type": "check", "rule": "0枚以上"}]};
+
+// ── 表示変換テーブル ──
+const TYPE_DISPLAY = {
+  master:      { label: "基本情報",    color: "#6366f1", bg: "#1e1b4b" },
+  transaction: { label: "取引・履歴",  color: "#06b6d4", bg: "#0c2a3a" },
+  junction:    { label: "明細・紐付け", color: "#f59e0b", bg: "#2a1f0a" },
+  external:    { label: "外部連携",    color: "#10b981", bg: "#052e1c" },
+};
+const CARDINALITY_DISPLAY = { "1:1": "1対1でつながる", "1:N": "1対多でつながる", "N:M": "多対多でつながる" };
+const CONSTRAINT_TYPE_DISPLAY = { enum: "選択肢", unique: "重複不可", check: "条件" };
+const colorMap = Object.fromEntries(Object.entries(TYPE_DISPLAY).map(([k, v]) => [k, v.color]));
+
+// ── ヘッダー ──
+document.getElementById("page-title").textContent = graphData.meta?.title || "情報のつながり図";
+document.getElementById("page-desc").textContent  = graphData.meta?.description || "";
+
+// ── グラフ構築 ──
+const constraintsByEntity = {};
+(graphData.constraints || []).forEach(c => { (constraintsByEntity[c.entity] ??= []).push(c); });
+const entityMap = Object.fromEntries((graphData.entities || []).map(e => [e.id, e]));
+
+const elements = [
+  ...(graphData.entities || []).map(e => ({
+    data: { id: e.id, label: e.label, type: e.type, description: e.description,
+            attributes: e.attributes || [], constraints: constraintsByEntity[e.id] || [] }
+  })),
+  ...(graphData.relations || []).map(r => ({
+    data: { id: r.id, source: r.from, target: r.to,
+            label: `${r.label}\n${CARDINALITY_DISPLAY[r.cardinality] ?? r.cardinality ?? ""}`,
+            cardinality: r.cardinality, relLabel: r.label, description: r.description }
+  })),
+];
+
+// ── 放射状レイアウト計算（エッジ交差ゼロを目指す）──
+// 戦略: ハブ（最多接続ソース）を中心に置き、シンクを均等角度で周囲に配置。
+// 他のソースは「接続するシンクの平均角度方向」に置くことで、
+// 各エッジが専用の角度セクターに収まりクロスが起きない。
+const presetPositions = (() => {
+  const ents = graphData.entities || [];
+  const rels = graphData.relations || [];
+  const nodeIds = ents.map(e => e.id);
+  if (!nodeIds.length) return {};
+
+  // 隣接リストを構築
+  const out = {}, inp = {};
+  nodeIds.forEach(id => { out[id] = []; inp[id] = []; });
+  rels.forEach(r => {
+    if (out[r.from] && inp[r.to]) {
+      out[r.from].push(r.to);
+      inp[r.to].push(r.from);
+    }
+  });
+
+  // ソース（入力エッジなし）・シンク（出力エッジなし）を分類
+  const sources = nodeIds.filter(id => !inp[id].length);
+  const sinks   = nodeIds.filter(id => !out[id].length);
+
+  // ハブ: 接続シンク数が最多のソース
+  const hub      = sources.reduce((a, b) => out[a].length >= out[b].length ? a : b, sources[0]);
+  const hubSinks = out[hub] || [];
+  const otherSources = sources.filter(id => id !== hub);
+
+  const R_SINK = 220;  // ハブ→シンクの距離
+  const R_SRC  = 420;  // ハブ→他ソースの距離
+
+  const pos = {};
+  pos[hub] = { x: 0, y: 0 };
+
+  // 全シンクをハブ周囲に均等配置（真上から時計回り）
+  const sinkAngle = {};
+  const hubSinkSet = new Set(hubSinks);
+  const allSinks = [...hubSinks, ...sinks.filter(id => !hubSinkSet.has(id))];
+  const nSinks = allSinks.length || 1;
+  allSinks.forEach((id, i) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / nSinks;
+    sinkAngle[id] = a;
+    pos[id] = { x: Math.round(R_SINK * Math.cos(a)), y: Math.round(R_SINK * Math.sin(a)) };
+  });
+
+  // 他ソースを、接続するシンクの平均角度方向に配置
+  const angleCount = {};
+  otherSources.forEach(srcId => {
+    const connected = out[srcId].filter(id => sinkAngle[id] !== undefined);
+    if (!connected.length) { pos[srcId] = { x: 0, y: R_SRC }; return; }
+
+    // 円形平均で角度を計算（角度の折り返しに対応）
+    const sinSum = connected.reduce((s, id) => s + Math.sin(sinkAngle[id]), 0);
+    const cosSum = connected.reduce((s, id) => s + Math.cos(sinkAngle[id]), 0);
+    let a = Math.atan2(sinSum, cosSum);
+
+    // 同角度に複数ノードが重なる場合は少しずらす
+    const key = Math.round(a * 10);
+    const cnt = angleCount[key] = (angleCount[key] || 0) + 1;
+    a += (cnt - 1) * 0.28;
+
+    pos[srcId] = { x: Math.round(R_SRC * Math.cos(a)), y: Math.round(R_SRC * Math.sin(a)) };
+  });
+
+  // 未配置ノードのフォールバック
+  nodeIds.forEach((id, i) => { if (!pos[id]) pos[id] = { x: i * 150, y: 300 }; });
+
+  return pos;
+})();
+
+const cy = cytoscape({
+  container: document.getElementById("cy"),
+  elements,
+  style: [
+    { selector: "node", style: {
+        "background-color": ele => colorMap[ele.data("type")] || "#6366f1",
+        "label": "data(label)", "color": "#fff", "font-size": "13px", "font-weight": "600",
+        "text-valign": "center", "text-halign": "center",
+        "width": 110, "height": 48, "shape": "roundrectangle",
+        "border-width": 2, "border-color": ele => (colorMap[ele.data("type")] || "#6366f1") + "55",
+    }},
+    { selector: "node:selected", style: { "border-width": 3, "border-color": "#fff" }},
+    { selector: "edge", style: {
+        "width": 1.5, "line-color": "#3d4268", "target-arrow-color": "#3d4268",
+        "target-arrow-shape": "triangle", "curve-style": "bezier",
+        "label": "data(label)", "font-size": "9px", "color": "#64748b",
+        "text-background-color": "#0f1117", "text-background-opacity": 1,
+        "text-background-padding": "3px", "text-wrap": "wrap", "text-max-width": "130px",
+    }},
+    { selector: "edge:selected", style: { "line-color": "#a5b4fc", "target-arrow-color": "#a5b4fc", "color": "#a5b4fc" }},
+  ],
+  layout: {
+    name: "preset",
+    positions: node => presetPositions[node.id()],
+    fit: true,
+    padding: 60,
+    animate: true,
+    animationDuration: 600,
+  },
+  wheelSensitivity: 0.3,
+});
+
+// ── ツールチップ ──
+const nodeTip = document.getElementById("node-tooltip");
+const edgeTip = document.getElementById("edge-tooltip");
+
+function showAt(el) {
+  el.style.display = "block";
+}
+
+cy.on("mouseover", "node", e => {
+  edgeTip.style.display = "none";
+  const d = e.target.data();
+  const typeInfo = TYPE_DISPLAY[d.type] || { label: d.type, color: "#a5b4fc", bg: "#1e1b4b" };
+  document.getElementById("tt-name").textContent = d.label;
+  const typeBadge = document.getElementById("tt-type");
+  typeBadge.textContent = typeInfo.label;
+  typeBadge.style.color = typeInfo.color;
+  typeBadge.style.background = typeInfo.bg;
+  document.getElementById("tt-desc").textContent = d.description || "";
+
+  document.getElementById("tt-attrs").innerHTML =
+    `<div class="tt-section">この情報が持つ項目</div>` +
+    d.attributes.map(attr => {
+      const isPk = !!attr.pk, isFk = !!attr.fk, isReq = !!attr.required && !isPk && !isFk;
+      const icon = isPk ? "🔑" : isFk ? "🔗" : isReq ? `<span style="color:#f87171;font-weight:700">✱</span>` : `<span style="color:transparent">·</span>`;
+      const badge = isPk ? `<span class="badge-sm badge-pk">識別子</span>` : isFk ? `<span class="badge-sm badge-fk">外部参照</span>` : isReq ? `<span class="badge-sm badge-req">必須</span>` : "";
+      const refLine = isFk ? `<div class="attr-ref">→ ${entityMap[attr.fk.entity]?.label ?? attr.fk.entity}の「${attr.fk.attribute}」</div>` : "";
+      const descLine = attr.description ? `<div class="attr-desc">${attr.description}</div>` : "";
+      return `<div class="tt-attr"><span class="icon">${icon}</span><div class="attr-body"><div class="attr-name">${attr.name}</div>${refLine}${descLine}</div>${badge}</div>`;
+    }).join("");
+
+  const conEl = document.getElementById("tt-constraints");
+  if (d.constraints.length > 0) {
+    const rules = d.constraints.map(c => {
+      const tl = CONSTRAINT_TYPE_DISPLAY[c.type] || c.type;
+      if (c.type === "enum")  return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span> の${tl}：${c.values.join("・")}</div>`;
+      if (c.type === "check") return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span> の条件：${c.rule}</div>`;
+      return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span>：${tl}</div>`;
+    }).join("");
+    conEl.innerHTML = `<hr class="tt-hr"><div class="tt-section">ルール・制約</div>${rules}`;
+  } else { conEl.innerHTML = ""; }
+  showAt(nodeTip);
+});
+
+cy.on("mouseout",  "node", () => { nodeTip.style.display = "none"; });
+cy.on("mouseover", "edge", e => {
+  nodeTip.style.display = "none";
+  const d = e.target.data();
+  document.getElementById("et-label").textContent = d.relLabel;
+  const cardEl = document.getElementById("et-card");
+  cardEl.textContent = CARDINALITY_DISPLAY[d.cardinality] ?? "";
+  cardEl.style.display = d.cardinality ? "inline-block" : "none";
+  document.getElementById("et-desc").textContent = d.description || "";
+  showAt(edgeTip);
+});
+cy.on("mouseout",  "edge",      () => { edgeTip.style.display = "none"; });
+cy.on("dragStart", ()           => { nodeTip.style.display = "none"; edgeTip.style.display = "none"; });
+
+// ── フィルターパネル ──
+const fpList = document.getElementById("fp-list");
+const checkedSet = new Set(graphData.entities.map(e => e.id));
+
+function buildFilterPanel() {
+  fpList.innerHTML = graphData.entities.map(e => {
+    const color = (TYPE_DISPLAY[e.type] || { color: "#6366f1" }).color;
+    return `<label class="fp-item">
+      <input type="checkbox" class="fp-check" data-id="${e.id}" checked>
+      <span class="fp-label">
+        <span class="fp-dot" style="background:${color}"></span>
+        ${e.label}
+      </span>
+    </label>`;
+  }).join("");
+
+  fpList.querySelectorAll(".fp-check").forEach(cb => {
+    cb.addEventListener("change", () => {
+      cb.checked ? checkedSet.add(cb.dataset.id) : checkedSet.delete(cb.dataset.id);
+      updateVisibility();
+    });
+  });
+}
+
+function updateVisibility() {
+  graphData.entities.forEach(e => {
+    const node = cy.getElementById(e.id);
+    checkedSet.has(e.id) ? node.show() : node.hide();
+  });
+  cy.edges().forEach(edge => {
+    const ok = edge.source().visible() && edge.target().visible();
+    ok ? edge.show() : edge.hide();
+  });
+}
+
+document.getElementById("fp-all").addEventListener("click", () => {
+  graphData.entities.forEach(e => checkedSet.add(e.id));
+  fpList.querySelectorAll(".fp-check").forEach(cb => cb.checked = true);
+  updateVisibility();
+});
+
+document.getElementById("fp-none").addEventListener("click", () => {
+  checkedSet.clear();
+  fpList.querySelectorAll(".fp-check").forEach(cb => cb.checked = false);
+  updateVisibility();
+});
+
+let fpCollapsed = false;
+document.getElementById("fp-toggle").addEventListener("click", () => {
+  fpCollapsed = !fpCollapsed;
+  fpList.style.display = fpCollapsed ? "none" : "";
+  document.getElementById("fp-toggle").textContent = fpCollapsed ? "▼" : "▲";
+});
+
+buildFilterPanel();
+</script>
+</body>
+</html>
