@@ -3,7 +3,11 @@
 > 話すだけで、情報の"構造"が見えてくる
 
 Claudeとの会話を通じて、頭の中にある業務情報やアイデアを整理し、  
-ズーム・ドラッグ操作可能なインタラクティブな関係図として出力するClaude Codeスキルです。
+ズーム・ドラッグ操作可能なインタラクティブな関係図として出力する Agent Skill です。
+
+**Claude Code と OpenAI Codex CLI の両方で動きます。** スキルの実体は1つ（`.claude/skills/`）で、
+Codex CLI 用の発見パス（`.agents/skills/`）にはシンボリックリンクを張ってあるだけなので、
+二重管理・ドリフトの心配なく同じ中身を両ツールから使えます（[Agent Skills 標準](https://agentskills.io)準拠）。
 
 エンジニアでなくても使えます。専門用語は一切出てきません。
 
@@ -30,13 +34,14 @@ git clone https://github.com/Cyberdog-AI-Lab/talk-to-structure
 cd talk-to-structure
 ```
 
-Claude Codeでこのフォルダを開くと、スキルが自動的に認識されます。
+このフォルダを **Claude Code** または **Codex CLI** で開くと、スキルが自動的に認識されます
+（Claude Code は `.claude/skills/`、Codex CLI は `.agents/skills/` からスキルを読み込みます）。
 
 ---
 
 ## 使い方
 
-Claude Codeで以下のように話しかけるだけです：
+Claude Code / Codex CLI で以下のように話しかけるだけです：
 
 ```
 「〇〇の業務について情報を整理したい」
@@ -44,7 +49,7 @@ Claude Codeで以下のように話しかけるだけです：
 「頭の中のアイデアを整理したい」
 ```
 
-Claudeが5フェーズのインタビューを開始します。
+AIが5フェーズのインタビューを開始します。
 
 ### インタビューの流れ
 
@@ -113,13 +118,20 @@ talk-to-structure/
 ├── .claude/
 │   └── skills/
 │       └── talk-to-structure/
-│           ├── SKILL.md              ← Claudeスキル本体
+│           ├── SKILL.md              ← スキル本体（実体はここ1つだけ）
 │           └── assets/
 │               └── graph-template.html  ← 関係図のHTMLテンプレート
+├── .agents/
+│   └── skills/
+│       └── talk-to-structure → ../../.claude/skills/talk-to-structure  ← Codex CLI用シンボリックリンク（中身は共通）
 ├── examples/
 │   └── order-management.json        ← サンプル出力
 └── output/                          ← 生成ファイルの出力先
 ```
+
+> `.agents/skills/talk-to-structure` は `.claude/skills/talk-to-structure` へのシンボリックリンクです。
+> Claude Code と Codex CLI で発見パスが違うだけで、参照する SKILL.md は同じ1つ。
+> **シンボリックリンクを実ファイルに置き換えたり、中身を分岐させたりしないでください。**
 
 ---
 
