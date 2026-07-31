@@ -2,11 +2,11 @@
 
 > 話すだけで、情報の"構造"が見えてくる
 
-Claudeとの会話を通じて、頭の中にある業務情報やアイデアを整理し、  
+AIエージェントとの会話を通じて、頭の中にある業務情報やアイデアを整理し、
 ズーム・ドラッグ操作可能なインタラクティブな関係図として出力する Agent Skill です。
 
-**Claude Code と OpenAI Codex CLI の両方で動きます。** スキルの実体は1つ（`.claude/skills/`）で、
-Codex CLI 用の発見パス（`.agents/skills/`）にはシンボリックリンクを張ってあるだけなので、
+**Claude Code と OpenAI Codex の両方で動きます。** スキルの実体は1つ（`.claude/skills/`）で、
+Codex 用の発見パス（`.agents/skills/`）にはシンボリックリンクを張ってあるだけなので、
 二重管理・ドリフトの心配なく同じ中身を両ツールから使えます（[Agent Skills 標準](https://agentskills.io)準拠）。
 
 エンジニアでなくても使えます。専門用語は一切出てきません。
@@ -18,9 +18,9 @@ Codex CLI 用の発見パス（`.agents/skills/`）にはシンボリックリ�
 ```
 あなた：「ライブハウスの予約管理について整理したい」
 
-Claude：「何について整理したいですか？業務の話でもアイデアでも...」
+AI：「何について整理したいですか？業務の話でもアイデアでも...」
          ↓（5フェーズのインタビュー）
-Claude：「output/index.html をブラウザで開いてください」
+AI：「output/index.html をブラウザで開いてください」
 ```
 
 → ブラウザで操作できる関係図が生成されます
@@ -34,14 +34,14 @@ git clone https://github.com/Cyberdog-AI-Lab/talk-to-structure
 cd talk-to-structure
 ```
 
-このフォルダを **Claude Code** または **Codex CLI** で開くと、スキルが自動的に認識されます
-（Claude Code は `.claude/skills/`、Codex CLI は `.agents/skills/` からスキルを読み込みます）。
+このフォルダを **Claude Code** または **Codex** で開くと、スキルが自動的に認識されます
+（Claude Code は `.claude/skills/`、Codex は `.agents/skills/` からスキルを読み込みます）。
 
 ---
 
 ## 使い方
 
-Claude Code / Codex CLI で以下のように話しかけるだけです：
+Claude Code / Codex で以下のように話しかけるだけです：
 
 ```
 「〇〇の業務について情報を整理したい」
@@ -123,14 +123,14 @@ talk-to-structure/
 │               └── graph-template.html  ← 関係図のHTMLテンプレート
 ├── .agents/
 │   └── skills/
-│       └── talk-to-structure → ../../.claude/skills/talk-to-structure  ← Codex CLI用シンボリックリンク（中身は共通）
+│       └── talk-to-structure → ../../.claude/skills/talk-to-structure  ← Codex用シンボリックリンク（中身は共通）
 ├── examples/
 │   └── order-management.json        ← サンプル出力
 └── output/                          ← 生成ファイルの出力先
 ```
 
 > `.agents/skills/talk-to-structure` は `.claude/skills/talk-to-structure` へのシンボリックリンクです。
-> Claude Code と Codex CLI で発見パスが違うだけで、参照する SKILL.md は同じ1つ。
+> Claude Code と Codex で発見パスが違うだけで、参照する SKILL.md は同じ1つ。
 > **シンボリックリンクを実ファイルに置き換えたり、中身を分岐させたりしないでください。**
 
 ---
