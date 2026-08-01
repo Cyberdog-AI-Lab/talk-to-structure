@@ -167,5 +167,169 @@
       "type": "check",
       "rule": "0枚以上"
     }
-  ]
+  ],
+  "sampleData": {
+    "records": [
+      {
+        "id": "event_summer",
+        "entity": "event",
+        "label": "Summer Pulse 2026",
+        "values": { "イベントID": "EV-001", "タイトル": "Summer Pulse 2026", "開催日時": "2026-08-22 18:30", "会場名": "LIVE STAGE AO" }
+      },
+      {
+        "id": "event_autumn",
+        "entity": "event",
+        "label": "Autumn Signals",
+        "values": { "イベントID": "EV-002", "タイトル": "Autumn Signals", "開催日時": "2026-09-19 19:00", "会場名": "LIVE STAGE AO" }
+      },
+      {
+        "id": "band_blue_echo",
+        "entity": "band",
+        "label": "Blue Echo",
+        "values": { "バンドID": "BD-001", "バンド名": "Blue Echo", "連絡先": "blue-echo@example.test" }
+      },
+      {
+        "id": "band_paper_moon",
+        "entity": "band",
+        "label": "Paper Moon",
+        "values": { "バンドID": "BD-002", "バンド名": "Paper Moon", "連絡先": "paper-moon@example.test" }
+      },
+      {
+        "id": "band_neon_harbor",
+        "entity": "band",
+        "label": "Neon Harbor",
+        "values": { "バンドID": "BD-003", "バンド名": "Neon Harbor", "連絡先": "neon-harbor@example.test" }
+      },
+      {
+        "id": "performance_1",
+        "entity": "performance",
+        "label": "Blue Echo出演",
+        "values": { "出演ID": "PF-001", "イベントID": "EV-001", "バンドID": "BD-001", "出演形態": "ノルマ", "ノルマ金額": 50000, "報酬額": null }
+      },
+      {
+        "id": "performance_2",
+        "entity": "performance",
+        "label": "Paper Moon出演",
+        "values": { "出演ID": "PF-002", "イベントID": "EV-001", "バンドID": "BD-002", "出演形態": "招待", "ノルマ金額": null, "報酬額": 30000 }
+      },
+      {
+        "id": "performance_3",
+        "entity": "performance",
+        "label": "Neon Harbor出演",
+        "values": { "出演ID": "PF-003", "イベントID": "EV-002", "バンドID": "BD-003", "出演形態": "招待", "ノルマ金額": null, "報酬額": 40000 }
+      },
+      {
+        "id": "performance_4",
+        "entity": "performance",
+        "label": "Blue Echo再出演",
+        "values": { "出演ID": "PF-004", "イベントID": "EV-002", "バンドID": "BD-001", "出演形態": "ノルマ", "ノルマ金額": 45000, "報酬額": null }
+      },
+      {
+        "id": "ticket_direct",
+        "entity": "ticket_type",
+        "label": "直販",
+        "values": { "チケット種別ID": "TT-01", "種別名": "直販", "単価": 3000 }
+      },
+      {
+        "id": "ticket_e",
+        "entity": "ticket_type",
+        "label": "eチケット",
+        "values": { "チケット種別ID": "TT-02", "種別名": "eチケット", "単価": 3000 }
+      },
+      {
+        "id": "ticket_reserve",
+        "entity": "ticket_type",
+        "label": "取り置き",
+        "values": { "チケット種別ID": "TT-03", "種別名": "取り置き", "単価": 3000 }
+      },
+      {
+        "id": "sale_1",
+        "entity": "ticket_sale",
+        "label": "Summer・直販42枚",
+        "values": { "販売ID": "TS-001", "イベントID": "EV-001", "チケット種別ID": "TT-01", "バンドID": null, "販売枚数": 42, "売上金額": 126000 }
+      },
+      {
+        "id": "sale_2",
+        "entity": "ticket_sale",
+        "label": "Summer・eチケット35枚",
+        "values": { "販売ID": "TS-002", "イベントID": "EV-001", "チケット種別ID": "TT-02", "バンドID": null, "販売枚数": 35, "売上金額": 105000 }
+      },
+      {
+        "id": "sale_3",
+        "entity": "ticket_sale",
+        "label": "Blue Echo取置18枚",
+        "values": { "販売ID": "TS-003", "イベントID": "EV-001", "チケット種別ID": "TT-03", "バンドID": "BD-001", "販売枚数": 18, "売上金額": 54000 }
+      },
+      {
+        "id": "sale_4",
+        "entity": "ticket_sale",
+        "label": "Autumn・eチケット20枚",
+        "values": { "販売ID": "TS-004", "イベントID": "EV-002", "チケット種別ID": "TT-02", "バンドID": null, "販売枚数": 20, "売上金額": 60000 }
+      },
+      {
+        "id": "sale_5",
+        "entity": "ticket_sale",
+        "label": "Neon Harbor取置15枚",
+        "values": { "販売ID": "TS-005", "イベントID": "EV-002", "チケット種別ID": "TT-03", "バンドID": "BD-003", "販売枚数": 15, "売上金額": 45000 }
+      },
+      {
+        "id": "staff_mio",
+        "entity": "staff",
+        "label": "佐伯みお",
+        "values": { "スタッフID": "ST-001", "名前": "佐伯みお", "役割": "受付" }
+      },
+      {
+        "id": "staff_ren",
+        "entity": "staff",
+        "label": "中村れん",
+        "values": { "スタッフID": "ST-002", "名前": "中村れん", "役割": "ステージ" }
+      },
+      {
+        "id": "shift_1",
+        "entity": "shift",
+        "label": "Summer受付シフト",
+        "values": { "シフトID": "SH-001", "イベントID": "EV-001", "スタッフID": "ST-001", "担当時間": "16:30〜22:00" }
+      },
+      {
+        "id": "shift_2",
+        "entity": "shift",
+        "label": "Summerステージシフト",
+        "values": { "シフトID": "SH-002", "イベントID": "EV-001", "スタッフID": "ST-002", "担当時間": "15:00〜22:30" }
+      },
+      {
+        "id": "shift_3",
+        "entity": "shift",
+        "label": "Autumn受付シフト",
+        "values": { "シフトID": "SH-003", "イベントID": "EV-002", "スタッフID": "ST-001", "担当時間": "17:00〜22:30" }
+      }
+    ],
+    "links": [
+      { "id": "sl01", "relation": "r1", "from": "event_summer", "to": "performance_1" },
+      { "id": "sl02", "relation": "r1", "from": "event_summer", "to": "performance_2" },
+      { "id": "sl03", "relation": "r1", "from": "event_autumn", "to": "performance_3" },
+      { "id": "sl04", "relation": "r1", "from": "event_autumn", "to": "performance_4" },
+      { "id": "sl05", "relation": "r2", "from": "band_blue_echo", "to": "performance_1" },
+      { "id": "sl06", "relation": "r2", "from": "band_paper_moon", "to": "performance_2" },
+      { "id": "sl07", "relation": "r2", "from": "band_neon_harbor", "to": "performance_3" },
+      { "id": "sl08", "relation": "r2", "from": "band_blue_echo", "to": "performance_4" },
+      { "id": "sl09", "relation": "r3", "from": "event_summer", "to": "sale_1" },
+      { "id": "sl10", "relation": "r3", "from": "event_summer", "to": "sale_2" },
+      { "id": "sl11", "relation": "r3", "from": "event_summer", "to": "sale_3" },
+      { "id": "sl12", "relation": "r3", "from": "event_autumn", "to": "sale_4" },
+      { "id": "sl13", "relation": "r3", "from": "event_autumn", "to": "sale_5" },
+      { "id": "sl14", "relation": "r4", "from": "ticket_direct", "to": "sale_1" },
+      { "id": "sl15", "relation": "r4", "from": "ticket_e", "to": "sale_2" },
+      { "id": "sl16", "relation": "r4", "from": "ticket_reserve", "to": "sale_3" },
+      { "id": "sl17", "relation": "r4", "from": "ticket_e", "to": "sale_4" },
+      { "id": "sl18", "relation": "r4", "from": "ticket_reserve", "to": "sale_5" },
+      { "id": "sl19", "relation": "r5", "from": "band_blue_echo", "to": "sale_3" },
+      { "id": "sl20", "relation": "r5", "from": "band_neon_harbor", "to": "sale_5" },
+      { "id": "sl21", "relation": "r6", "from": "event_summer", "to": "shift_1" },
+      { "id": "sl22", "relation": "r6", "from": "event_summer", "to": "shift_2" },
+      { "id": "sl23", "relation": "r6", "from": "event_autumn", "to": "shift_3" },
+      { "id": "sl24", "relation": "r7", "from": "staff_mio", "to": "shift_1" },
+      { "id": "sl25", "relation": "r7", "from": "staff_ren", "to": "shift_2" },
+      { "id": "sl26", "relation": "r7", "from": "staff_mio", "to": "shift_3" }
+    ]
+  }
 }

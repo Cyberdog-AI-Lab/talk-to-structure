@@ -78,5 +78,70 @@
     { "entity": "order",   "attribute": "ステータス", "type": "enum",  "values": ["受付中", "確定", "出荷済", "キャンセル"] },
     { "entity": "payment", "attribute": "入金方法",   "type": "enum",  "values": ["銀行振込", "クレジットカード", "現金"] },
     { "entity": "order_item", "attribute": "数量",    "type": "check", "rule": "1個以上" }
-  ]
+  ],
+  "sampleData": {
+    "records": [
+      {
+        "id": "customer_aozora", "entity": "customer", "label": "青空商事",
+        "values": { "顧客ID": "C001", "会社名": "青空商事", "担当者名": "田中あおい", "メールアドレス": "aoi@example.test" }
+      },
+      {
+        "id": "customer_hidamari", "entity": "customer", "label": "ひだまり工房",
+        "values": { "顧客ID": "C002", "会社名": "ひだまり工房", "担当者名": "佐藤ひな", "メールアドレス": "hina@example.test" }
+      },
+      {
+        "id": "product_chair", "entity": "product", "label": "オークチェア",
+        "values": { "商品ID": "P001", "商品名": "オークチェア", "単価": 18000 }
+      },
+      {
+        "id": "product_lamp", "entity": "product", "label": "デスクランプ",
+        "values": { "商品ID": "P002", "商品名": "デスクランプ", "単価": 7600 }
+      },
+      {
+        "id": "order_1", "entity": "order", "label": "受注 O-001",
+        "values": { "受注ID": "O-001", "顧客ID": "C001", "受注日時": "2026-07-28 10:15", "合計金額": 43600, "ステータス": "出荷済" }
+      },
+      {
+        "id": "order_2", "entity": "order", "label": "受注 O-002",
+        "values": { "受注ID": "O-002", "顧客ID": "C002", "受注日時": "2026-07-30 14:40", "合計金額": 15200, "ステータス": "確定" }
+      },
+      {
+        "id": "item_1", "entity": "order_item", "label": "O-001・チェア2脚",
+        "values": { "明細ID": "OI-001", "受注ID": "O-001", "商品ID": "P001", "数量": 2, "単価（受注時）": 18000 }
+      },
+      {
+        "id": "item_2", "entity": "order_item", "label": "O-001・ランプ1台",
+        "values": { "明細ID": "OI-002", "受注ID": "O-001", "商品ID": "P002", "数量": 1, "単価（受注時）": 7600 }
+      },
+      {
+        "id": "item_3", "entity": "order_item", "label": "O-002・ランプ2台",
+        "values": { "明細ID": "OI-003", "受注ID": "O-002", "商品ID": "P002", "数量": 2, "単価（受注時）": 7600 }
+      },
+      {
+        "id": "payment_1", "entity": "payment", "label": "O-001入金",
+        "values": { "入金ID": "PM-001", "受注ID": "O-001", "入金日": "2026-07-29", "金額": 43600, "入金方法": "銀行振込" }
+      },
+      {
+        "id": "payment_2", "entity": "payment", "label": "O-002入金",
+        "values": { "入金ID": "PM-002", "受注ID": "O-002", "入金日": "2026-07-30", "金額": 15200, "入金方法": "クレジットカード" }
+      },
+      {
+        "id": "shipment_1", "entity": "shipment", "label": "O-001出荷",
+        "values": { "出荷ID": "SP-001", "受注ID": "O-001", "出荷日": "2026-07-31", "追跡番号": "TRK-20260731-001" }
+      }
+    ],
+    "links": [
+      { "id": "sl01", "relation": "r1", "from": "customer_aozora", "to": "order_1" },
+      { "id": "sl02", "relation": "r1", "from": "customer_hidamari", "to": "order_2" },
+      { "id": "sl03", "relation": "r2", "from": "order_1", "to": "item_1" },
+      { "id": "sl04", "relation": "r2", "from": "order_1", "to": "item_2" },
+      { "id": "sl05", "relation": "r2", "from": "order_2", "to": "item_3" },
+      { "id": "sl06", "relation": "r3", "from": "product_chair", "to": "item_1" },
+      { "id": "sl07", "relation": "r3", "from": "product_lamp", "to": "item_2" },
+      { "id": "sl08", "relation": "r3", "from": "product_lamp", "to": "item_3" },
+      { "id": "sl09", "relation": "r4", "from": "order_1", "to": "payment_1" },
+      { "id": "sl10", "relation": "r4", "from": "order_2", "to": "payment_2" },
+      { "id": "sl11", "relation": "r5", "from": "order_1", "to": "shipment_1" }
+    ]
+  }
 }

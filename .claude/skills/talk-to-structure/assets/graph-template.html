@@ -14,14 +14,20 @@
     }
     header h1 { font-size: 15px; font-weight: 600; color: #a5b4fc; }
     header .sub { font-size: 12px; color: #64748b; }
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: #312e81; color: #a5b4fc; margin-left: auto; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background: #312e81; color: #a5b4fc; }
+    .mode-switch { margin-left: auto; display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid #2d3148; border-radius: 9px; background: #111421; }
+    .mode-btn { border: 0; border-radius: 6px; padding: 6px 10px; background: transparent; color: #64748b; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; }
+    .mode-btn:hover:not(:disabled) { color: #c7d2fe; background: #252a40; }
+    .mode-btn.active { color: #eef2ff; background: #4338ca; }
+    .mode-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+    .mode-count { margin-left: 4px; font-size: 9px; opacity: 0.8; }
 
     #cy { width: 100%; height: calc(100vh - 56px); }
 
     .tooltip {
       position: fixed; background: #1e2235; border: 1px solid #2d3148;
       border-radius: 10px; padding: 14px 16px; font-size: 13px;
-      pointer-events: none; display: none; z-index: 200; max-width: 300px;
+      pointer-events: none; display: none; z-index: 200; max-width: 340px;
       box-shadow: 0 12px 32px rgba(0,0,0,0.6);
       top: 68px; right: 20px;
     }
@@ -35,6 +41,7 @@
     .tt-attr .attr-name { font-size: 12px; color: #cbd5e1; line-height: 1.5; }
     .tt-attr .attr-desc { font-size: 11px; color: #475569; line-height: 1.4; margin-top: 1px; }
     .tt-attr .attr-ref  { font-size: 11px; color: #38bdf8; line-height: 1.4; margin-top: 1px; }
+    .tt-attr .attr-value { font-size: 12px; color: #f8fafc; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
     .badge-sm { font-size: 10px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; align-self: start; margin-top: 3px; }
     .badge-pk  { background: #312e81; color: #a5b4fc; }
     .badge-fk  { background: #0c2a3a; color: #38bdf8; }
@@ -43,7 +50,7 @@
     .tt-rule .rule-key { color: #f59e0b; font-weight: 600; }
     #edge-tooltip .et-label { font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
     #edge-tooltip .et-card { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 9999px; background: #1e293b; color: #94a3b8; margin-bottom: 8px; }
-    #edge-tooltip .et-desc { font-size: 12px; color: #64748b; line-height: 1.6; font-style: italic; }
+    #edge-tooltip .et-desc { font-size: 12px; color: #64748b; line-height: 1.6; font-style: italic; white-space: pre-line; }
     hr.tt-hr { border: none; border-top: 1px solid #2d3148; margin: 8px 0; }
 
     #filter-panel { position: fixed; top: 68px; left: 12px; background: #1a1d2e; border: 1px solid #2d3148; border-radius: 10px; z-index: 150; min-width: 190px; overflow: hidden; }
@@ -74,6 +81,10 @@
 <header>
   <h1 id="page-title">情報のつながり図</h1>
   <span class="sub" id="page-desc"></span>
+  <div class="mode-switch" role="group" aria-label="表示モード">
+    <button class="mode-btn active" id="mode-structure" type="button" aria-pressed="true">構造</button>
+    <button class="mode-btn" id="mode-sample" type="button" aria-pressed="false">サンプルデータ<span class="mode-count" id="sample-count"></span></button>
+  </div>
   <span class="badge">talk-to-structure</span>
 </header>
 
@@ -132,41 +143,133 @@ const CARDINALITY_DISPLAY = { "1:1": "1対1でつながる", "1:N": "1対多で�
 const CONSTRAINT_TYPE_DISPLAY = { enum: "選択肢", unique: "重複不可", check: "条件" };
 const colorMap = Object.fromEntries(Object.entries(TYPE_DISPLAY).map(([k, v]) => [k, v.color]));
 
-// ── ヘッダー ──
-document.getElementById("page-title").textContent = graphData.meta?.title || "情報のつながり図";
-document.getElementById("page-desc").textContent  = graphData.meta?.description || "";
-
-// ── グラフ構築 ──
+// ── データの準備 ──
+const entities = Array.isArray(graphData.entities) ? graphData.entities : [];
+const relations = Array.isArray(graphData.relations) ? graphData.relations : [];
+const sampleRecords = Array.isArray(graphData.sampleData?.records) ? graphData.sampleData.records : [];
+const sampleLinks = Array.isArray(graphData.sampleData?.links) ? graphData.sampleData.links : [];
 const constraintsByEntity = {};
 (graphData.constraints || []).forEach(c => { (constraintsByEntity[c.entity] ??= []).push(c); });
-const entityMap = Object.fromEntries((graphData.entities || []).map(e => [e.id, e]));
+const entityMap = Object.fromEntries(entities.map(e => [e.id, e]));
+const relationMap = Object.fromEntries(relations.map(r => [r.id, r]));
+const recordMap = Object.fromEntries(sampleRecords.map(r => [r.id, r]));
+const validSampleLinks = sampleLinks.filter(link => recordMap[link.from] && recordMap[link.to]);
+const hasSampleData = sampleRecords.length > 0;
+let currentMode = "structure";
 
-const elements = [
-  ...(graphData.entities || []).map(e => ({
-    data: { id: e.id, label: e.label, type: e.type, description: e.description,
-            attributes: e.attributes || [], constraints: constraintsByEntity[e.id] || [] }
-  })),
-  ...(graphData.relations || []).map(r => ({
-    data: { id: r.id, source: r.from, target: r.to,
-            label: `${r.label}\n${CARDINALITY_DISPLAY[r.cardinality] ?? r.cardinality ?? ""}`,
-            cardinality: r.cardinality, relLabel: r.label, description: r.description }
-  })),
-];
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatValue(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  if (Array.isArray(value)) return value.join("・");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function sampleNodeId(recordId) {
+  return `sample-node:${recordId}`;
+}
+
+function sampleRecordLabel(record) {
+  if (record.label) return record.label;
+  const entity = entityMap[record.entity];
+  const values = record.values || {};
+  const preferred = (entity?.attributes || []).find(attr => !attr.pk && values[attr.name] != null);
+  const primary = (entity?.attributes || []).find(attr => attr.pk);
+  return formatValue(values[preferred?.name] ?? values[primary?.name] ?? record.id);
+}
+
+function buildStructureElements() {
+  return [
+    ...entities.map(entity => ({
+      data: {
+        id: entity.id,
+        entityId: entity.id,
+        label: entity.label,
+        type: entity.type,
+        description: entity.description,
+        attributes: entity.attributes || [],
+        constraints: constraintsByEntity[entity.id] || [],
+      }
+    })),
+    ...relations.map(relation => ({
+      data: {
+        id: relation.id,
+        source: relation.from,
+        target: relation.to,
+        label: `${relation.label}\n${CARDINALITY_DISPLAY[relation.cardinality] ?? relation.cardinality ?? ""}`,
+        cardinality: relation.cardinality,
+        relLabel: relation.label,
+        description: relation.description,
+      }
+    })),
+  ];
+}
+
+function buildSampleElements() {
+  const nodes = sampleRecords
+    .filter(record => entityMap[record.entity])
+    .map(record => {
+      const entity = entityMap[record.entity];
+      const recordLabel = sampleRecordLabel(record);
+      return {
+        data: {
+          id: sampleNodeId(record.id),
+          recordId: record.id,
+          entityId: record.entity,
+          label: `${recordLabel}\n${entity.label}`,
+          recordLabel,
+          type: entity.type,
+          description: `${entity.label}のサンプルデータ`,
+          attributes: entity.attributes || [],
+          values: record.values || {},
+          isSample: true,
+        }
+      };
+    });
+
+  const nodeIds = new Set(nodes.map(node => node.data.id));
+  const edges = validSampleLinks
+    .filter(link => nodeIds.has(sampleNodeId(link.from)) && nodeIds.has(sampleNodeId(link.to)))
+    .map((link, index) => {
+      const relation = relationMap[link.relation] || {};
+      const fromLabel = sampleRecordLabel(recordMap[link.from]);
+      const toLabel = sampleRecordLabel(recordMap[link.to]);
+      return {
+        data: {
+          id: `sample-edge:${link.id || index + 1}`,
+          source: sampleNodeId(link.from),
+          target: sampleNodeId(link.to),
+          label: link.label || relation.label || "つながる",
+          relLabel: link.label || relation.label || "つながる",
+          description: `${fromLabel} → ${toLabel}${relation.description ? `\n${relation.description}` : ""}`,
+          isSample: true,
+        }
+      };
+    });
+
+  return [...nodes, ...edges];
+}
 
 // ── 放射状レイアウト計算（エッジ交差ゼロを目指す）──
 // 戦略: ハブ（最多接続ソース）を中心に置き、シンクを均等角度で周囲に配置。
 // 他のソースは「接続するシンクの平均角度方向」に置くことで、
 // 各エッジが専用の角度セクターに収まりクロスが起きない。
 const presetPositions = (() => {
-  const ents = graphData.entities || [];
-  const rels = graphData.relations || [];
-  const nodeIds = ents.map(e => e.id);
+  const nodeIds = entities.map(e => e.id);
   if (!nodeIds.length) return {};
 
   // 隣接リストを構築
   const out = {}, inp = {};
   nodeIds.forEach(id => { out[id] = []; inp[id] = []; });
-  rels.forEach(r => {
+  relations.forEach(r => {
     if (out[r.from] && inp[r.to]) {
       out[r.from].push(r.to);
       inp[r.to].push(r.from);
@@ -178,7 +281,8 @@ const presetPositions = (() => {
   const sinks   = nodeIds.filter(id => !out[id].length);
 
   // ハブ: 接続シンク数が最多のソース
-  const hub      = sources.reduce((a, b) => out[a].length >= out[b].length ? a : b, sources[0]);
+  const sourceCandidates = sources.length ? sources : nodeIds;
+  const hub      = sourceCandidates.reduce((a, b) => out[a].length >= out[b].length ? a : b, sourceCandidates[0]);
   const hubSinks = out[hub] || [];
   const otherSources = sources.filter(id => id !== hub);
 
@@ -226,7 +330,7 @@ const presetPositions = (() => {
 
 const cy = cytoscape({
   container: document.getElementById("cy"),
-  elements,
+  elements: [],
   style: [
     { selector: "node", style: {
         "background-color": ele => colorMap[ele.data("type")] || "#6366f1",
@@ -234,6 +338,10 @@ const cy = cytoscape({
         "text-valign": "center", "text-halign": "center",
         "width": 110, "height": 48, "shape": "roundrectangle",
         "border-width": 2, "border-color": ele => (colorMap[ele.data("type")] || "#6366f1") + "55",
+    }},
+    { selector: "node[isSample]", style: {
+        "width": 150, "height": 62, "font-size": "11px", "text-wrap": "wrap", "text-max-width": "132px",
+        "border-width": 3, "border-color": ele => (colorMap[ele.data("type")] || "#6366f1") + "88",
     }},
     { selector: "node:selected", style: { "border-width": 3, "border-color": "#fff" }},
     { selector: "edge", style: {
@@ -243,16 +351,15 @@ const cy = cytoscape({
         "text-background-color": "#0f1117", "text-background-opacity": 1,
         "text-background-padding": "3px", "text-wrap": "wrap", "text-max-width": "130px",
     }},
+    { selector: "edge[isSample]", style: {
+        "width": 2, "line-color": "#64748b", "target-arrow-color": "#64748b", "font-size": "10px", "color": "#94a3b8",
+    }},
+    { selector: ".faded", style: { "opacity": 0.12 } },
+    { selector: "edge.highlighted", style: { "opacity": 1, "width": 3, "line-color": "#c7d2fe", "target-arrow-color": "#c7d2fe", "color": "#c7d2fe", "z-index": 20 } },
+    { selector: "node.focused", style: { "opacity": 1, "border-width": 4, "border-color": "#fff", "z-index": 30 } },
     { selector: "edge:selected", style: { "line-color": "#a5b4fc", "target-arrow-color": "#a5b4fc", "color": "#a5b4fc" }},
   ],
-  layout: {
-    name: "preset",
-    positions: node => presetPositions[node.id()],
-    fit: true,
-    padding: 60,
-    animate: true,
-    animationDuration: 600,
-  },
+  layout: { name: "preset" },
   wheelSensitivity: 0.3,
 });
 
@@ -268,34 +375,56 @@ cy.on("mouseover", "node", e => {
   edgeTip.style.display = "none";
   const d = e.target.data();
   const typeInfo = TYPE_DISPLAY[d.type] || { label: d.type, color: "#a5b4fc", bg: "#1e1b4b" };
-  document.getElementById("tt-name").textContent = d.label;
+  const entity = entityMap[d.entityId] || {};
+  document.getElementById("tt-name").textContent = d.isSample ? d.recordLabel : d.label;
   const typeBadge = document.getElementById("tt-type");
-  typeBadge.textContent = typeInfo.label;
+  typeBadge.textContent = d.isSample ? entity.label : typeInfo.label;
   typeBadge.style.color = typeInfo.color;
   typeBadge.style.background = typeInfo.bg;
   document.getElementById("tt-desc").textContent = d.description || "";
 
-  document.getElementById("tt-attrs").innerHTML =
-    `<div class="tt-section">この情報が持つ項目</div>` +
-    d.attributes.map(attr => {
+  const attributes = Array.isArray(d.attributes) ? d.attributes : [];
+  if (d.isSample) {
+    const values = d.values || {};
+    const schemaNames = new Set(attributes.map(attr => attr.name));
+    const displayAttributes = [
+      ...attributes,
+      ...Object.keys(values).filter(name => !schemaNames.has(name)).map(name => ({ name })),
+    ];
+    document.getElementById("tt-attrs").innerHTML =
+      `<div class="tt-section">このデータの中身</div>` +
+      displayAttributes.map(attr => {
+        const isPk = !!attr.pk, isFk = !!attr.fk;
+        const icon = isPk ? "🔑" : isFk ? "🔗" : `<span style="color:transparent">·</span>`;
+        const badge = isPk ? `<span class="badge-sm badge-pk">識別子</span>` : isFk ? `<span class="badge-sm badge-fk">参照</span>` : "";
+        const refLine = isFk ? `<div class="attr-ref">→ ${escapeHtml(entityMap[attr.fk.entity]?.label ?? attr.fk.entity)}</div>` : "";
+        return `<div class="tt-attr"><span class="icon">${icon}</span><div class="attr-body"><div class="attr-name">${escapeHtml(attr.name)}</div><div class="attr-value">${escapeHtml(formatValue(values[attr.name]))}</div>${refLine}</div>${badge}</div>`;
+      }).join("");
+    document.getElementById("tt-constraints").innerHTML = "";
+  } else {
+    document.getElementById("tt-attrs").innerHTML =
+      `<div class="tt-section">この情報が持つ項目</div>` +
+      attributes.map(attr => {
       const isPk = !!attr.pk, isFk = !!attr.fk, isReq = !!attr.required && !isPk && !isFk;
       const icon = isPk ? "🔑" : isFk ? "🔗" : isReq ? `<span style="color:#f87171;font-weight:700">✱</span>` : `<span style="color:transparent">·</span>`;
       const badge = isPk ? `<span class="badge-sm badge-pk">識別子</span>` : isFk ? `<span class="badge-sm badge-fk">外部参照</span>` : isReq ? `<span class="badge-sm badge-req">必須</span>` : "";
-      const refLine = isFk ? `<div class="attr-ref">→ ${entityMap[attr.fk.entity]?.label ?? attr.fk.entity}の「${attr.fk.attribute}」</div>` : "";
-      const descLine = attr.description ? `<div class="attr-desc">${attr.description}</div>` : "";
-      return `<div class="tt-attr"><span class="icon">${icon}</span><div class="attr-body"><div class="attr-name">${attr.name}</div>${refLine}${descLine}</div>${badge}</div>`;
-    }).join("");
+      const refLine = isFk ? `<div class="attr-ref">→ ${escapeHtml(entityMap[attr.fk.entity]?.label ?? attr.fk.entity)}の「${escapeHtml(attr.fk.attribute)}」</div>` : "";
+      const descLine = attr.description ? `<div class="attr-desc">${escapeHtml(attr.description)}</div>` : "";
+      return `<div class="tt-attr"><span class="icon">${icon}</span><div class="attr-body"><div class="attr-name">${escapeHtml(attr.name)}</div>${refLine}${descLine}</div>${badge}</div>`;
+      }).join("");
 
-  const conEl = document.getElementById("tt-constraints");
-  if (d.constraints.length > 0) {
-    const rules = d.constraints.map(c => {
-      const tl = CONSTRAINT_TYPE_DISPLAY[c.type] || c.type;
-      if (c.type === "enum")  return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span> の${tl}：${c.values.join("・")}</div>`;
-      if (c.type === "check") return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span> の条件：${c.rule}</div>`;
-      return `<div class="tt-rule"><span class="rule-key">${c.attribute}</span>：${tl}</div>`;
-    }).join("");
-    conEl.innerHTML = `<hr class="tt-hr"><div class="tt-section">ルール・制約</div>${rules}`;
-  } else { conEl.innerHTML = ""; }
+    const conEl = document.getElementById("tt-constraints");
+    const constraints = Array.isArray(d.constraints) ? d.constraints : [];
+    if (constraints.length > 0) {
+      const rules = constraints.map(c => {
+        const tl = CONSTRAINT_TYPE_DISPLAY[c.type] || c.type;
+        if (c.type === "enum")  return `<div class="tt-rule"><span class="rule-key">${escapeHtml(c.attribute)}</span> の${escapeHtml(tl)}：${escapeHtml((c.values || []).join("・"))}</div>`;
+        if (c.type === "check") return `<div class="tt-rule"><span class="rule-key">${escapeHtml(c.attribute)}</span> の条件：${escapeHtml(c.rule)}</div>`;
+        return `<div class="tt-rule"><span class="rule-key">${escapeHtml(c.attribute)}</span>：${escapeHtml(tl)}</div>`;
+      }).join("");
+      conEl.innerHTML = `<hr class="tt-hr"><div class="tt-section">ルール・制約</div>${rules}`;
+    } else { conEl.innerHTML = ""; }
+  }
   showAt(nodeTip);
 });
 
@@ -305,26 +434,39 @@ cy.on("mouseover", "edge", e => {
   const d = e.target.data();
   document.getElementById("et-label").textContent = d.relLabel;
   const cardEl = document.getElementById("et-card");
-  cardEl.textContent = CARDINALITY_DISPLAY[d.cardinality] ?? "";
-  cardEl.style.display = d.cardinality ? "inline-block" : "none";
+  cardEl.textContent = d.isSample ? "サンプルのつながり" : CARDINALITY_DISPLAY[d.cardinality] ?? "";
+  cardEl.style.display = d.isSample || d.cardinality ? "inline-block" : "none";
   document.getElementById("et-desc").textContent = d.description || "";
   showAt(edgeTip);
 });
 cy.on("mouseout",  "edge",      () => { edgeTip.style.display = "none"; });
-cy.on("dragStart", ()           => { nodeTip.style.display = "none"; edgeTip.style.display = "none"; });
+cy.on("grab",      ()           => { nodeTip.style.display = "none"; edgeTip.style.display = "none"; });
+cy.on("tap", "node", e => {
+  if (currentMode !== "sample") return;
+  cy.elements().removeClass("faded highlighted focused").addClass("faded");
+  const neighborhood = e.target.closedNeighborhood();
+  neighborhood.removeClass("faded");
+  neighborhood.edges().addClass("highlighted");
+  e.target.addClass("focused");
+});
+cy.on("tap", e => {
+  if (currentMode === "sample" && e.target === cy) {
+    cy.elements().removeClass("faded highlighted focused");
+  }
+});
 
 // ── フィルターパネル ──
 const fpList = document.getElementById("fp-list");
-const checkedSet = new Set(graphData.entities.map(e => e.id));
+const checkedSet = new Set(entities.map(e => e.id));
 
 function buildFilterPanel() {
-  fpList.innerHTML = graphData.entities.map(e => {
+  fpList.innerHTML = entities.map(e => {
     const color = (TYPE_DISPLAY[e.type] || { color: "#6366f1" }).color;
     return `<label class="fp-item">
-      <input type="checkbox" class="fp-check" data-id="${e.id}" checked>
+      <input type="checkbox" class="fp-check" data-id="${escapeHtml(e.id)}" checked>
       <span class="fp-label">
         <span class="fp-dot" style="background:${color}"></span>
-        ${e.label}
+        ${escapeHtml(e.label)}
       </span>
     </label>`;
   }).join("");
@@ -337,9 +479,8 @@ function buildFilterPanel() {
 }
 
 function updateVisibility() {
-  graphData.entities.forEach(e => {
-    const node = cy.getElementById(e.id);
-    checkedSet.has(e.id) ? node.show() : node.hide();
+  cy.nodes().forEach(node => {
+    checkedSet.has(node.data("entityId")) ? node.show() : node.hide();
   });
   cy.edges().forEach(edge => {
     const ok = edge.source().visible() && edge.target().visible();
@@ -348,7 +489,7 @@ function updateVisibility() {
 }
 
 document.getElementById("fp-all").addEventListener("click", () => {
-  graphData.entities.forEach(e => checkedSet.add(e.id));
+  entities.forEach(e => checkedSet.add(e.id));
   fpList.querySelectorAll(".fp-check").forEach(cb => cb.checked = true);
   updateVisibility();
 });
@@ -366,7 +507,60 @@ document.getElementById("fp-toggle").addEventListener("click", () => {
   document.getElementById("fp-toggle").textContent = fpCollapsed ? "▼" : "▲";
 });
 
+function updateModeChrome() {
+  const structureButton = document.getElementById("mode-structure");
+  const sampleButton = document.getElementById("mode-sample");
+  structureButton.classList.toggle("active", currentMode === "structure");
+  sampleButton.classList.toggle("active", currentMode === "sample");
+  structureButton.setAttribute("aria-pressed", String(currentMode === "structure"));
+  sampleButton.setAttribute("aria-pressed", String(currentMode === "sample"));
+  document.getElementById("page-desc").textContent = currentMode === "sample"
+    ? `${sampleRecords.length}件の架空データで実際のつながりを表示`
+    : graphData.meta?.description || "";
+  document.getElementById("attr-legend").innerHTML = currentMode === "sample"
+    ? `<div class="leg-title">サンプル値の印</div>
+       <div class="al-item"><span style="font-size:13px">🔑</span> このデータを特定するID</div>
+       <div class="al-item"><span style="font-size:13px">🔗</span> 他のサンプルへの参照</div>
+       <div class="al-item"><span style="color:#a5b4fc;font-weight:700;font-size:13px">◆</span> クリックでつながりを強調</div>`
+    : `<div class="leg-title">項目の印</div>
+       <div class="al-item"><span style="font-size:13px">🔑</span> この情報を特定するID</div>
+       <div class="al-item"><span style="font-size:13px">🔗</span> 他の情報への参照</div>
+       <div class="al-item"><span style="color:#f87171;font-weight:700;font-size:13px">✱</span> 入力が必須の項目</div>`;
+}
+
+function switchMode(mode) {
+  if (mode === "sample" && !hasSampleData) return;
+  currentMode = mode;
+  nodeTip.style.display = "none";
+  edgeTip.style.display = "none";
+  cy.elements().remove();
+  cy.add(mode === "sample" ? buildSampleElements() : buildStructureElements());
+  updateVisibility();
+  updateModeChrome();
+
+  const layout = mode === "sample"
+    ? {
+        name: "cose", fit: true, padding: 70, animate: true, animationDuration: 650,
+        nodeDimensionsIncludeLabels: true, nodeRepulsion: 700000, idealEdgeLength: 150,
+        edgeElasticity: 90, nestingFactor: 0.9, gravity: 0.18,
+        numIter: 1200, initialTemp: 180, coolingFactor: 0.96, minTemp: 1,
+      }
+    : {
+        name: "preset", positions: node => presetPositions[node.id()],
+        fit: true, padding: 60, animate: true, animationDuration: 500,
+      };
+  cy.layout(layout).run();
+}
+
+document.getElementById("page-title").textContent = graphData.meta?.title || "情報のつながり図";
+document.getElementById("sample-count").textContent = hasSampleData ? `${sampleRecords.length}件` : "なし";
+document.getElementById("mode-sample").disabled = !hasSampleData;
+document.getElementById("mode-sample").title = hasSampleData ? "実際のデータ例でつながりを見る" : "サンプルデータはありません";
+document.getElementById("mode-structure").addEventListener("click", () => switchMode("structure"));
+document.getElementById("mode-sample").addEventListener("click", () => switchMode("sample"));
+
 buildFilterPanel();
+switchMode("structure");
 </script>
 </body>
 </html>
